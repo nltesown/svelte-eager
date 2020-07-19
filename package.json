@@ -1,5 +1,11 @@
 {
-  "name": "SvelteEager",
+  "name": "@nltesown/svelte-eager",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/nltesown/svelte-eager.git"
+  },
   "svelte": "src/index.js",
   "module": "dist/index.mjs",
   "main": "dist/index.js",
