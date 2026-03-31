@@ -13,12 +13,12 @@
    *   block for fixed-positioned elements, which would break the layout.
    */
 
-  let { children } = $props();
+  import type { Snippet } from "svelte";
 
-  /** @type {HTMLElement | null} */
-  let nav = $state(null);
-  /** @type {HTMLElement | null} */
-  let spacer = $state(null);
+  let { children }: { children: Snippet } = $props();
+
+  let nav = $state<HTMLElement | null>(null);
+  let spacer = $state<HTMLElement | null>(null);
 
   $effect(() => {
     if (!nav || !spacer) return;
@@ -50,13 +50,23 @@
     //   • scrolling up   (delta < 0): offset increases → nav slides down
     // The clamp keeps offset within [−navH, 0], which naturally enforces the
     // hidden / entering / pinned state transitions without extra branches.
+    //
+    // cancelAnimationFrame + rAF deduplicates to one DOM write per frame:
+    // if multiple scroll events fire before the next paint (common on 120 Hz
+    // displays), each one cancels the pending frame and reschedules — so only
+    // the last event in a given frame actually touches the DOM. scrollY is
+    // read inside the rAF callback to get the freshest value at paint time.
+    let rafId = 0;
     function handleScroll() {
-      const currentScrollY = window.scrollY;
-      const delta = currentScrollY - lastScrollY;
-      lastScrollY = currentScrollY;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        const delta = currentScrollY - lastScrollY;
+        lastScrollY = currentScrollY;
 
-      offset = Math.max(-navH, Math.min(0, offset - delta));
-      applyOffset();
+        offset = Math.max(-navH, Math.min(0, offset - delta));
+        applyOffset();
+      });
     }
 
     // ─── Resize handler ──────────────────────────────────────────────────────
@@ -78,6 +88,7 @@
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
+      cancelAnimationFrame(rafId);
       ro.disconnect();
       window.removeEventListener("scroll", handleScroll);
       document.documentElement.style.removeProperty("--eager-visible-height");
