@@ -13,6 +13,13 @@
   </nav>
 </Eager>
 
+<div class="sub-bar">
+  <button class="active">All</button>
+  <button>Drafts</button>
+  <button>Published</button>
+  <button>Archived</button>
+</div>
+
 <main>
   {#each [1, 2, 3] as n}
     <section id="section-{n}">
@@ -80,6 +87,40 @@
 
   ul a:hover {
     opacity: 1;
+  }
+
+  .sub-bar {
+    position: sticky;
+    /* Tracks the Eager nav's visible height — decreases as the nav collapses,
+       so this bar rises to fill the gap until it sticks at the very top. */
+    top: var(--eager-visible-height, 0px);
+    z-index: 999; /* just below the Eager nav */
+    display: flex;
+    gap: 0.25rem;
+    padding: 0 1.5rem;
+    background: #f5f5f7;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .sub-bar button {
+    padding: 0.6rem 1rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #555;
+    margin-bottom: -1px; /* overlap the border-bottom of the container */
+  }
+
+  .sub-bar button.active {
+    border-bottom-color: #1a1a2e;
+    color: #1a1a2e;
+    font-weight: 600;
+  }
+
+  .sub-bar button:hover:not(.active) {
+    color: #1a1a2e;
   }
 
   main {

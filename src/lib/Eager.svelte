@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   /**
    * Eager navigation bar — behaves as a normal element when scrolling down
    * (slides out of view naturally) and as a sticky element when scrolling up
@@ -33,7 +33,16 @@
     let offset = Math.max(-navH, Math.min(0, -lastScrollY));
 
     spacer.style.height = `${navH}px`;
-    nav.style.transform = `translateY(${offset}px)`;
+
+    // Sets the transform and publishes --eager-visible-height (the nav's
+    // current visible height: navH → 0) so sibling sticky elements can use
+    // `top: var(--eager-visible-height)` to track just below the nav edge.
+    function applyOffset() {
+      nav.style.transform = `translateY(${offset}px)`;
+      document.documentElement.style.setProperty("--eager-visible-height", `${navH + offset}px`);
+    }
+
+    applyOffset();
 
     // ─── Scroll handler ──────────────────────────────────────────────────────
     // A single clamp replaces the explicit FSM:
@@ -47,7 +56,7 @@
       lastScrollY = currentScrollY;
 
       offset = Math.max(-navH, Math.min(0, offset - delta));
-      nav.style.transform = `translateY(${offset}px)`;
+      applyOffset();
     }
 
     // ─── Resize handler ──────────────────────────────────────────────────────
@@ -58,7 +67,7 @@
       spacer.style.height = `${navH}px`;
       // Re-clamp in case the new height invalidates the current offset.
       offset = Math.max(-navH, Math.min(0, offset));
-      nav.style.transform = `translateY(${offset}px)`;
+      applyOffset();
     }
 
     const ro = new ResizeObserver(handleResize);
@@ -66,11 +75,12 @@
 
     // `passive: true` lets the browser skip checking for preventDefault(),
     // enabling optimised scrolling and removing jank.
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       ro.disconnect();
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener("scroll", handleScroll);
+      document.documentElement.style.removeProperty("--eager-visible-height");
     };
   });
 </script>
