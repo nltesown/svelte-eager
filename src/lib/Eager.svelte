@@ -21,10 +21,12 @@
     children,
     startHidden = false,
     peekOffset = 0,
+    bannerEl = undefined,
   }: {
     children: Snippet;
     startHidden?: boolean;
     peekOffset?: number;
+    bannerEl?: HTMLElement;
   } = $props();
 
   let nav = $state<HTMLElement | null>(null);
@@ -39,6 +41,7 @@
     //   0         → nav is fully visible at the top of the viewport (pinned)
     //   minOffset → nav is at its most hidden (peekOffset px still visible)
     let navH = el_nav.offsetHeight;
+    let bannerH = bannerEl ? bannerEl.offsetHeight : 0;
     let minOffset = -(navH - peekOffset);
     let lastScrollY = window.scrollY;
 
@@ -49,12 +52,18 @@
 
     el_spacer.style.height = `${navH}px`;
 
-    // Sets the transform and publishes --eager-visible-height (the nav's
-    // current visible height: navH → 0) so sibling sticky elements can use
+    // Sets the transform, the top position (to clear the banner), and publishes
+    // --eager-visible-height so sibling sticky elements can use
     // `top: var(--eager-visible-height)` to track just below the nav edge.
+    // The value accounts for the banner so sticky siblings position correctly
+    // regardless of whether a banner is present (bannerH is 0 when absent).
     function applyOffset() {
+      el_nav.style.top = `${bannerH}px`;
       el_nav.style.transform = `translateY(${offset}px)`;
-      document.documentElement.style.setProperty("--eager-visible-height", `${navH + offset}px`);
+      document.documentElement.style.setProperty(
+        "--eager-visible-height",
+        `${bannerH + navH + offset}px`
+      );
     }
 
     applyOffset();
@@ -84,10 +93,10 @@
       });
     }
 
-    // ─── Resize handler ──────────────────────────────────────────────────────
+    // ─── Resize handlers ─────────────────────────────────────────────────────
     // ResizeObserver tracks changes to the nav's intrinsic height (e.g. when
     // content changes at responsive breakpoints) so the spacer stays accurate.
-    function handleResize() {
+    function handleNavResize() {
       navH = el_nav.offsetHeight;
       minOffset = -(navH - peekOffset);
       el_spacer.style.height = `${navH}px`;
@@ -96,8 +105,20 @@
       applyOffset();
     }
 
-    const ro = new ResizeObserver(handleResize);
-    ro.observe(el_nav);
+    // Tracks the banner's height so the nav top follows it in real time.
+    // When the banner closes via a CSS transition, ResizeObserver fires on
+    // every frame of that transition — the nav moves up in lock-step with no
+    // additional JS animation logic needed.
+    function handleBannerResize() {
+      bannerH = bannerEl ? bannerEl.offsetHeight : 0;
+      applyOffset();
+    }
+
+    const navRo = new ResizeObserver(handleNavResize);
+    navRo.observe(el_nav);
+
+    const bannerRo = bannerEl ? new ResizeObserver(handleBannerResize) : null;
+    bannerRo?.observe(bannerEl!);
 
     // `passive: true` lets the browser skip checking for preventDefault(),
     // enabling optimised scrolling and removing jank.
@@ -105,7 +126,8 @@
 
     return () => {
       cancelAnimationFrame(rafId);
-      ro.disconnect();
+      navRo.disconnect();
+      bannerRo?.disconnect();
       window.removeEventListener("scroll", handleScroll);
       document.documentElement.style.removeProperty("--eager-visible-height");
     };

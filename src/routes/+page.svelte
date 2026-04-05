@@ -1,8 +1,21 @@
 <script>
   import Eager from "$lib/Eager.svelte";
+
+  /** @type {HTMLElement | undefined} */
+  let bannerEl = $state(undefined);
+  let bannerVisible = $state(true);
 </script>
 
-<Eager peekOffset={4}>
+{#if bannerVisible}
+  <div class="banner" bind:this={bannerEl}>
+    <span>This is an important announcement. <a href="/">Learn more</a>.</span>
+    <button class="banner-close" onclick={() => (bannerVisible = false)} aria-label="Close banner">
+      &times;
+    </button>
+  </div>
+{/if}
+
+<Eager peekOffset={0} {bannerEl}>
   <nav>
     <a href="/">svelte-eager</a>
     <ul>
@@ -53,6 +66,7 @@
   :global(body) {
     margin: 0;
     font-family: system-ui, sans-serif;
+    scroll-behavior: smooth;
   }
 
   nav {
@@ -142,5 +156,42 @@
     line-height: 1.7;
     color: #444;
     margin-bottom: 1rem;
+  }
+
+  .banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001; /* above the Eager nav */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.6rem 1.5rem;
+    background: #e8f4fd;
+    border-bottom: 1px solid #b3d8f5;
+    font-size: 0.875rem;
+    color: #1a3a5c;
+    overflow: hidden;
+    transition:
+      padding 0.3s ease,
+      border-width 0.3s ease;
+  }
+
+  .banner a {
+    color: inherit;
+    font-weight: 600;
+  }
+
+  .banner-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    color: inherit;
+    padding: 0 0.25rem;
   }
 </style>
