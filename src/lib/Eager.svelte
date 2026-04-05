@@ -15,30 +15,45 @@
 
   import type { Snippet } from "svelte";
 
-  let { children }: { children: Snippet } = $props();
+  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+  let {
+    children,
+    startHidden = false,
+    peekOffset = 0,
+  }: {
+    children: Snippet;
+    startHidden?: boolean;
+    peekOffset?: number;
+  } = $props();
 
   let nav = $state<HTMLElement | null>(null);
   let spacer = $state<HTMLElement | null>(null);
 
   $effect(() => {
     if (!nav || !spacer) return;
+    const el_nav = nav;
+    const el_spacer = spacer;
 
     // All position values are in pixels. `offset` is the translateY amount:
-    //   0       → nav is fully visible at the top of the viewport (pinned)
-    //   -navH   → nav is completely above the viewport (hidden)
-    let navH = nav.offsetHeight;
+    //   0         → nav is fully visible at the top of the viewport (pinned)
+    //   minOffset → nav is at its most hidden (peekOffset px still visible)
+    let navH = el_nav.offsetHeight;
+    let minOffset = -(navH - peekOffset);
     let lastScrollY = window.scrollY;
 
-    // Handle the case where the page loads with an existing scroll position.
-    let offset = Math.max(-navH, Math.min(0, -lastScrollY));
+    // When startHidden is true, hide the nav proportionally to the current
+    // scroll position on load. Otherwise always start fully visible (offset 0),
+    // which is the expected UX when reloading mid-page.
+    let offset = startHidden ? Math.max(minOffset, -lastScrollY) : 0;
 
-    spacer.style.height = `${navH}px`;
+    el_spacer.style.height = `${navH}px`;
 
     // Sets the transform and publishes --eager-visible-height (the nav's
     // current visible height: navH → 0) so sibling sticky elements can use
     // `top: var(--eager-visible-height)` to track just below the nav edge.
     function applyOffset() {
-      nav.style.transform = `translateY(${offset}px)`;
+      el_nav.style.transform = `translateY(${offset}px)`;
       document.documentElement.style.setProperty("--eager-visible-height", `${navH + offset}px`);
     }
 
@@ -48,7 +63,7 @@
     // A single clamp replaces the explicit FSM:
     //   • scrolling down (delta > 0): offset decreases → nav slides up
     //   • scrolling up   (delta < 0): offset increases → nav slides down
-    // The clamp keeps offset within [−navH, 0], which naturally enforces the
+    // The clamp keeps offset within [minOffset, 0], which naturally enforces the
     // hidden / entering / pinned state transitions without extra branches.
     //
     // cancelAnimationFrame + rAF deduplicates to one DOM write per frame:
@@ -64,7 +79,7 @@
         const delta = currentScrollY - lastScrollY;
         lastScrollY = currentScrollY;
 
-        offset = Math.max(-navH, Math.min(0, offset - delta));
+        offset = clamp(offset - delta, minOffset, 0);
         applyOffset();
       });
     }
@@ -73,15 +88,16 @@
     // ResizeObserver tracks changes to the nav's intrinsic height (e.g. when
     // content changes at responsive breakpoints) so the spacer stays accurate.
     function handleResize() {
-      navH = nav.offsetHeight;
-      spacer.style.height = `${navH}px`;
+      navH = el_nav.offsetHeight;
+      minOffset = -(navH - peekOffset);
+      el_spacer.style.height = `${navH}px`;
       // Re-clamp in case the new height invalidates the current offset.
-      offset = Math.max(-navH, Math.min(0, offset));
+      offset = clamp(offset, minOffset, 0);
       applyOffset();
     }
 
     const ro = new ResizeObserver(handleResize);
-    ro.observe(nav);
+    ro.observe(el_nav);
 
     // `passive: true` lets the browser skip checking for preventDefault(),
     // enabling optimised scrolling and removing jank.

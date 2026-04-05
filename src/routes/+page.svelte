@@ -2,7 +2,7 @@
   import Eager from "$lib/Eager.svelte";
 </script>
 
-<Eager>
+<Eager peekOffset={4}>
   <nav>
     <a href="/">svelte-eager</a>
     <ul>
