@@ -50,7 +50,7 @@
     // which is the expected UX when reloading mid-page.
     let offset = startHidden ? Math.max(minOffset, -lastScrollY) : 0;
 
-    el_spacer.style.height = `${navH}px`;
+    el_spacer.style.height = `${navH + bannerH}px`;
 
     // Sets the transform, the top position (to clear the banner), and publishes
     // --eager-visible-height so sibling sticky elements can use
@@ -99,7 +99,7 @@
     function handleNavResize() {
       navH = el_nav.offsetHeight;
       minOffset = -(navH - peekOffset);
-      el_spacer.style.height = `${navH}px`;
+      el_spacer.style.height = `${navH + bannerH}px`;
       // Re-clamp in case the new height invalidates the current offset.
       offset = clamp(offset, minOffset, 0);
       applyOffset();
@@ -111,6 +111,7 @@
     // additional JS animation logic needed.
     function handleBannerResize() {
       bannerH = bannerEl ? bannerEl.offsetHeight : 0;
+      el_spacer.style.height = `${navH + bannerH}px`;
       applyOffset();
     }
 
